@@ -1,0 +1,349 @@
+---
+title: "rSEA _R_ package"
+author: "Mitra Ebrahimpoor"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{rSEA R package}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+  
+---
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r, echo = FALSE, message = FALSE}
+knitr::opts_chunk$set(collapse = T, comment = "#>")
+options(tibble.print_min = 4L, tibble.print_max = 4L)
+library(rSEA)
+```
+
+# Simultaneous Enrichment Analysis with rSEA
+
+## Overview of the Method
+
+*rSEA* is a novel paradigm for simultaneous enrichment analysis of feature-sets. It combines the pre-existing self-contained and competitive approaches by defining a unified null hypothesis that includes the null hypotheses of both approaches as special cases. This null hypothesis is tested with All-Resolutions Inference (ARI), an approach to multiple testing that controls Familywise Error Rate based on closed testing and Simes tests.
+
+*rSEA* is extremely flexible: not only does it allow both self-contained and competitive testing, it allows the user to choose the type of test after seeing the data. Moreover, the choice of feature-set database(s) may also be postponed until after seeing the data. The data may even be used for the definition of feature-sets, e.g. by taking subsets of feature-sets with a certain sign or magnitude of estimated effect. Users may even iterate and revise the choice of type of test and the definition of feature-sets of interest on the basis of results. Still, familywise error is controlled for all final results. 
+
+The required input is feature-wise p-values, so the functions can be used with any omics platform, experimental design or model. The only assumption needed is the Simes inequality, which allows dependence between p-values. It is the same assumption that is needed for the validity of the procedure of Benjamini and Hochberg as a method for False Discovery Rate control. Despite the flexibility and lack of independence assumptions, the new method has acceptable power compared to classical enrichment methods. Notably, the power of the method does not depend on the number of feature-sets tested. As a consequence, classical methods will do better for a limited number of candidate feature-sets, while *rSEA* outperforms other methods when databases are large. According to the simulation studies, *rSEA* is comparable in power to classical enrichment methods for a database the size of Gene Ontology.
+
+The output for each feature-set is not only an adjusted p-value for enrichment, but also a simultaneous lower confidence bound to the actual proportion of active features. Users obtain not just the presence or absence of enrichment, but also an assessment of the level of enrichment in each feature-set.
+
+
+### Defining the unified null hypothesis
+
+The unified null hypothesis is very flexible with two parameters. Other than the default selfcontained and competitive testing, it can handle custom competitive testing. Here are a few examples on how to define and intrepret different parameters within the unified null, for more details please refer to the paper mentioned at the end of this document.
+
+The unified null hypothesis is written as:
+ $H^{U}_{0}(S,c)\colon \pi (S)\leq c$,
+ 
+Here, $\pi$ is the proportion of true discoveries (TDP) in $S$, $S$ is the feature set of interest and $c$ is the threshold for testing. So it reads: TDP for the features in the set is less than threshold $c$.Different combinations of $S$ and $c$ are possible and SEA has considered all of these tests, hence looking at them one after the other will not affect the type I error ($\alpha$). So, fo feature-set 
+$S_t$ you can test:
+
+*Self-contained null hypothesis: $S=S_t$ and $C=0$
+
+*Default competitive null hypothesis: $S=S_t$ and $C=TDP(S^{c}_{t})$
+
+*Custom competitive null hypothesis: $S=S_t$ and $C=c$
+
+
+Where $S^{c}_{t}$ is the set of features that are not in the feature-set of interest or what is called 'background' features. 
+
+Note that value of $c$ will define the test, so if there are 15 features in $S$, choosing $c=0.6$ means you are testing if there are at least 9 $( 0.6 \times 15)$ active features in that set. To choose this value you can start with the TDP of the background as in the default competitive and refine it as you see fit. 
+
+
+## Usage 
+
+Currently there are three functions within `rSEA`. To portray their usage, we first explain the properties of main arguments and then simulate a dataset of 300 features and a mock pathlist for some practical examples.
+
+### Input and format
+
+As mentioned in the previous section, the required input is raw feature-wise p-values i.e. p-values from individual testing of the features before application of multiple testing corrections. The second required element is the names of features corresponding to each p-value. This can be either named, or stored in a dataframe with a column representing the name, or a separate vector matching the p-values. The third and last element is the database of feature-sets (called *pathlist* from now on). There are different types of databases:
+
+- External: databases in literature such as GO, KEGG, Wikipathways, etc.
+- Internal: User-defined feature-sets based on the current or previous studies
+- Combination: internally modified version of public databases 
+
+No matter which database is used, the feature-sets should be stored as a list of lists, where each feature-set is a (named) list defined in terms of the featureIDs matching the input. This type of pathlists are very easy to create in R and the "Creating the Pathlist" section explains how to make a *pathlist* using online resources of *GO*, *KEGG* and *Wikipathways*.
+
+### Example dataset
+
+We simulate the p-values using `runif()`, to make sure there is some signal, we simulate 100 small p-values and 200 random ones. The featureIDS are just a combination of two small-case letters. Then 20 hypothetical pathways are generated by selecting a random set of names, these are combined to create the pathlist required for the functions `setTest()` and `SEA()`. In practice, you will have this data yourself and won't need to run this chunk.
+
+```{r data_sim}
+
+set.seed(753) #to get the same result as you repeat
+names<-sapply(1:300, function(i) paste0( combn(letters, 2)[,i], collapse = "")) # a vector of two-letter names
+p<-c(runif(100, 0, 1)^6,runif(200, 0, 1)) # a vector of random p-values, the first 100 are smaller
+simdat<-data.frame(pvals=p, ids=names, stringsAsFactors=FALSE) #the dataframe
+head(simdat) #take a look at the dataset
+
+pathsize<-floor(runif(50, 10, 60)) #generate a vector of random pathway sizes between 10 and 60
+
+mocklist<-lapply(pathsize,function(x) sample(names,size=x)) # create a pseudo list of pathways
+
+```
+### `setTDP()` function
+
+The `setTDP()` function is used to get the point estimate and the lower-bound for the 'True Discovery Proportion (TDP)'of a feature-set, which can even be the set of all features 
+
+To get an overview of the dataset we just generated, we will use the `setTest()` function without a `set` argument. This evaluates the set of all features. Note that, the data argument is optional, so you can pass two matching vectors of p-values and featureIDs, the output of the following codes would be the same.
+
+```{r setTDP_chunk1}
+require(rSEA) #load rSEA
+#setTDP(pvals, ids, data=simdat) 
+
+setTDP(simdat$pvals, simdat$ids) 
+
+```
+So at least 0.1 percent of the features in the dataset are associated with the outcome, and the median point estimate is 0.19. We may say that there are at least (0.1 X 300) 30 active features in the dataset.
+If we take a look at pathways, what is the proportion of *active* features in pathway 3? the following will provide an answer:
+
+```{r setTDP_chunk2}
+require(rSEA) #load rSEA
+
+setTDP(simdat$pvals, simdat$ids, set=mocklist[[3]]) 
+
+```
+So it seems that pathway 3 is enriched with active genes. We can formally test that with `setTest()` function, as you see below.
+
+### `setTest()` function
+
+The `setTest()` function is used with a single set, which can even be the set of all features. It returns an adjusted p-value for the chosen test of features. for details on defining the testtype see "Defining the unified null hypothesis" section.
+
+Here, we first test if there are *any* active features, sho we will do a *selfcontained* test for the set of all features. We already know that the corresponding p-value is significant as the estimated lower-bound for the TDP is estimated to be 0.1. Then we will test the default competitive null for pathway 3.
+
+```{r setTest_chunk1}
+require(rSEA) 
+
+#selfcontained test of all features
+setTest(pvals, ids, data=simdat, testype = "selfcontained")  
+
+#default comp. test
+setTest(pvals, ids, data=simdat, set=mocklist[[3]], testype = "competitive")  
+
+#custom comp. test
+setTest(pvals, ids, data=simdat, set=mocklist[[3]], testype = "competitive", testvalue = 0.5) 
+```
+As expected, the self-contained null hypothesis for the set of all features is rejected, so there *are* some active features in the dataset. Also, pathway 3 is significantly enriched with active features. The default competitive tests against the total TDP, which is 0.1 here. We have repeated the competitive null test with 0.5, to see if half of the features in the set are active.
+
+### `SEA()` function
+
+The `SEA()` function will simultaneously evaluate multiple pathways from pathlist. Here we test all the pathways in pathlist. 
+
+```{r SEA_chunk1}
+require(rSEA) #load rSEA
+testchart1<-SEA(simdat$pvals, simdat$ids, pathlist = mocklist)
+head(testchart1)
+```
+The resulting chart has one row per pathway and a minimum of 3 columns. Columns represent
+
+*ID: Pathway identifier, these will be in the same order as the pathlist
+
+*Name: Name of the pathway is printed in case the pathlist is a named list
+
+*Size: Size of the pathway as defined in pathlist
+
+*Coverage: Proportion of features in the pathway that were present in the data, so TDP is a proportion of $size \times Coverage$ features and not necessarily the whole pathway
+
+*TDP_bound: Estimated lower-bound for the proportion of true discoveries in the pathway (in paper denoted by $\bar \pi$), the upper-bound is always 1, it can be translated to the number of true discoveries by $size \times Coverage \times \bar \pi$ 
+
+*TDP_estimate: A point estimate for TDP (in paper denoted by $\hat \pi$), this can also be translated to number of true discoveries by $size \times Coverage \times \hat \pi$ 
+
+*adj P: These include the adjusted p-values for the specified tests. SC. and Comp. stand for self-contained and competitive, respectively. The custom competitive, is the tets of unified null against the user-chosen `thresh`
+
+Here all pathways have a coverage of 1 which is very unlikely in practice. The first pathway is of size 50, we can infer that at least 2 ($1 \times 50 \times 0.04$) features are associated with the outcome. This is confirmed by the significant self-contained adj.p-value and non-significant competitive adj.p-value. Recall that the default competitive null hypothesis tests against the over all TDP which we estimated as 0.1, so for this pathway the default competitive hypothesis tests the pathway TPD against 5 ($1 \times 50 \times 0.1$). 
+
+If you were to use a larger pathlist such as Gene Ontology, it may be that you are not interested in all of those 12 thousand pathways, then the pathways of interest are selected, using `select` argument. Here we choose 20 pathways. You can choose also based on the name of pathways if the pathlist is named.
+
+```{r SEA_chunk2}
+require(rSEA) #load rSEA
+testchart2<-SEA(pvals, ids, data=simdat, pathlist = mocklist, select =11:30)
+testchart2
+
+```
+It seems both pathway 8 and 9 have some interesting features associated with the outcome of interest. It is interesting to see if the union of these two has a larger TDP, we can examine this with `setTDP()` function. Then we can test if the set of features in the overlapping set is enriched.
+
+```{r setTest_chunk2}
+require(rSEA) #load rSEA
+lap<-union(mocklist[[8]], mocklist[[9]]) # the overlapping feature-set
+length(lap)
+
+setTDP(pvals, ids, data=simdat, set =lap) 
+setTest(pvals, ids, data=simdat, set =lap , testype = "selfcontained")
+setTest(pvals, ids, data=simdat, set =lap , testype = "competitive", testvalue = 0.1) 
+
+```
+As you can see there are 71 unique features with only 3 (71 \times 0.042) active features. According to the self-contained test, at least some of these features are significantly associated with the outcome. Testing against 0.1 does not reject the null hypothesis that the proportion of discoveries in this new set is less than 0.1.
+
+### `topSEA()` function
+
+`topSEA()` is a sorting function to facilitate the evaluation of the SEA chart. In this example, we will first sort the table by TDP estimate to get the pathways with maximum TDP on top of chart. One may wish to sort the table by Comp.adjP to get the pathways with smaller adj.p-value for the default competitive test on top. Another interesting output can be keeping only the significant (at level $\alpha<0.05$) pathways according to the self-contained test and then ordering by size.
+
+```{r SEA_chunk3}
+require(rSEA) #load rSEA
+testchart3<-topSEA(testchart1) #sorted by large TDP.estimates
+head(testchart3)
+
+testchart4<-topSEA(testchart1, by=Comp.adjP, descending=FALSE) #sorted by smallest competitive adj.p-values 
+head(testchart3)
+
+sigchart<-topSEA(testchart1, by=Comp.adjP, thresh = 0.05) #keep only significant self-contained p-values
+sigchart2<-topSEA(sigchart, by=Size, descending=TRUE) #sorted by pathway size
+head(sigchart2)
+```
+There are some additional options. One is removing pathways with a coverage smaller than a certain value, for example by adding `cover=0.5`, only pathways with 50% coverage are kept.
+
+## Creating the Pathlists
+
+The `pathlist` argument is a list of pathways to be evaluated and can be created in different ways, here we show a few examples of creating such a list. In practice, any list of feature-sets can be used as long as it a list.
+The only data you need to create the pathlist is an annotation file to link the probe identifiers to gene symbols, gene ontology terms and other gene information. This object is called a bimap object and can be retrived from different databases and even a local library. 
+Here we present two examples, one is the famouse Gene Ontology database, for which a various range of `bioconductor` tools exist. The other is the wikipathways and the `rwikipathways` package.
+
+NOTE: For reproducibility, We suggest saving a copy of the created pathlist in your local drive as the online sources are constantly updating.
+
+### GO pathways
+
+One standard format for annotation in `Bioconductor` is an annotation package. Annotation packages are readily available in Bioconductor for most commercial chip types. For custom-made arrays or for less frequently used platforms, it is possible to make your own annotation package using the `AnnBuilder` package.
+AnnotationDbi package is a key reference for learnign about how to use bimap objects. `AnnotationDbi` is used primarily to create mapping objects that allow easy access from `R` to underlying annotation databases. As such, it acts as the `R` interface for all the standard annotation packages. For more information read the help file of `AnnotationDbi`.
+
+To create the bimap for a microarray dataset done on Affymetrix hgu133a chips, install the `hgu133a.db` package. A relevent package can be used according to your data.
+
+Take the following steps to install the required bioconductor packages. For older versions of R, please refer to the appropriate Bioconductor release.
+
+```{R pathlist_chunk1, eval = FALSE}
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("hgu133a.db")
+
+###if you are running an older version of R
+#source("http://bioconductor.org/biocLite.R")
+#biocLite(c("limma","edgeR"))
+```
+
+Use `ls()` function to view the list of objects provided with this db package and `columns()` function to discover which sorts of annotations can be extracted from the database. You can see that a mapping of hgu133 to GO exists which provides the relevent bimap data. Here we only focus only on Cellular Component (CC), alterbatively, Biological Process (BP) and Molecular Function (MF) can also be adopted.
+
+```{R pathlist_chunk2, eval = FALSE}
+library(hgu133a.db)
+ls("package:hgu133a.db")
+columns(hgu133a.db)
+
+gobimap<-toTable(hgu133aGO)
+gobimap<-gobimap[gobimap$Ontology=="CC",]
+
+head(gobimap)
+
+```
+
+The bimap is converted to a GOList in the required format as below.(As the GO is a large database, this can take a few seconds.)
+
+```{R pathlist_chunk3, eval = FALSE}
+
+GOIDs<-unique(gobimap$go_id)
+GOList<-lapply(GOIDs,
+               function(id) 
+                   gobimap$probe_id[gobimap$go_id==id])
+
+names(GOList)<-GOIDs
+#head(GOList)
+
+#make sure the Ids are unique and the paths are non-empty 
+GOList<-lapply(GOList, unique)
+GOList <- lapply(GOList, function(path) if (all(is.na(path))) character(0) else path)
+
+#save(GOList, file="GOList.RData")
+```
+
+### KEGG pathways
+
+Th procdure for creating KEGG pathways is the same. Here we assume the data are from mice and entries are based on "entrez gene identifiers". So we will use the `org.Mm.eg.db`  package.
+
+```{R pathlist_chunk4, eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("org.Mm.eg.db")
+
+library(org.Mm.eg.db)
+ls("package:org.Mm.eg.db")
+columns(org.Hs.eg.db)
+
+````
+
+Here we create an indirect match between ENTREZID and PATH. You may get the warning that the mapping is 1 on many, then it is better to create the pathways using the IDs from your dataset and not the package. To do so, in the function below, replace the "keggbimap$ENTREZID" with the names of gene from your dataset. Another option is to use a manually corrected mapping of ENTREZID and PATH.
+
+```{R pathlist_chunk5, eval = FALSE}
+
+
+uniKeys <- keys(org.Hs.eg.db, keytype="ENTREZID")
+cols <- c("SYMBOL", "PATH")
+
+keggbimap<-select(org.Hs.eg.db, keys=uniKeys,
+                  columns=cols, keytype="ENTREZID")
+
+head(keggbimap)
+
+keggIDs<-unique(keggbimap$PATH)
+KEGGList<-lapply(keggIDs,
+                 function(id)
+                    keggbimap$ENTREZID[keggbimap$PATH==id])
+names(KEGGList)<-keggIDs
+head(KEGGList)
+
+#make sure the Ids are unique and the paths are non-empty 
+KEGGList<-lapply(KEGGList, unique)
+KEGGList<-lapply(KEGGList, function(path)
+                  path[!is.na(path)])
+KEGGList <- lapply(KEGGList,
+                   function(path)
+                       if (all(is.na(path))) character(0) else path)
+
+#save(KEGGList, file="KEGGList.RData")
+
+```
+
+### Wikipathways 
+
+Install the rwikipathways package from Github.
+
+```{R pathlist_chunk6, eval = FALSE}
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("rWikiPathways")
+
+```
+
+In this final example we assume that the data are from human and based on "Ensembl" identifiers.
+
+```{R pathlist_chunk7, eval = FALSE}
+
+#Matching the IDs to create list of wikipathways for metabs
+library(rWikiPathways)
+
+homoPathways<-listPathwayIds(organism="Homo sapiens")
+wikiList<-lapply(homoPathways,
+                function(x) 
+                    getXrefList(pathway = x, systemCode="En"))
+
+names(wikiList)<-homoPathways
+
+#make sure the Ids are unique and the paths are non-empty 
+wikiList<-lapply(wikiList, unique)
+wikiList <- lapply(wikiList, function(path) if (all(is.na(path))) character(0) else path)
+
+#save(wikiList, file="wikiList.RData")
+
+```
+
+## Citing rSEA
+
+If you use the rSEA package, please cite the following paper:
+
+- Mitra Ebrahimpoor, Pietro Spitali, Kristina Hettne, Roula Tsonaka, Jelle Goeman, Simultaneous Enrichment Analysis of all Possible Gene-sets: Unifying Self-Contained and Competitive Methods, Briefings in Bioinformatics, bbz074, https://doi.org/10.1093/bib/bbz074
