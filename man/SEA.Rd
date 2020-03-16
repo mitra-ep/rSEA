@@ -50,7 +50,7 @@ feature-sets from \code{pathlist}.
 \examples{
 
 \dontrun{
-##Generate a vector of pvalues
+##Generate a vector of pvalues for a toy example
 set.seed(159)
 
 m<- 100
@@ -58,7 +58,7 @@ pvalues <- runif(m,0,1)^5
 featureIDs <- as.character(1:m)
 
 # perform a self-contained test for all features
-settest(pvalues, featureIDs, testype = "selfcontained")
+setTest(pvalues, featureIDs, testype = "selfcontained")
 
 # create 3 random pathway of size 60, 20 and 45
 randpathlist=list(A=as.character(c(sample(1:m, 60))),
@@ -67,10 +67,18 @@ randpathlist=list(A=as.character(c(sample(1:m, 60))),
 
 
 # get the seachart for the whole pathlist
-set(pvalues, featureIDs, pathlist=randpathlist)
+S1<-SEA(pvalues, featureIDs, pathlist=randpathlist)
+S1
 
 # get the seachart for only first two pathways of the randpathlist
-sea(pvalues, featureIDs, pathlist=randpathlist, select=1:2)
+S2<-SEA(pvalues, featureIDs, pathlist=randpathlist, select=1:2)
+S2
+
+#sort the list by competitve p-value and select top 2
+topSEA(S2, by=Comp.adjP, descending = FALSE, n=2)
+
+#make an enrichment plot based on TDP.estimated of pathways
+plotSEA(S1,n=3)
 }
 }
 \references{
