@@ -272,8 +272,7 @@ BiocManager::install("org.Mm.eg.db")
 library(org.Mm.eg.db)
 ls("package:org.Mm.eg.db")
 columns(org.Hs.eg.db)
-
-````
+```
 
 Here we create an indirect match between ENTREZID and PATH. You may get the warning that the mapping is 1 on many, then it is better to create the pathways using the IDs from your dataset and not the package. To do so, in the function below, replace the "keggbimap$ENTREZID" with the names of gene from your dataset. Another option is to use a manually corrected mapping of ENTREZID and PATH.
 
