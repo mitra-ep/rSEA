@@ -10,13 +10,13 @@
 #' The default is TDP_bound.
 #'
 #' @param thresh A real number between 0 and 1. If specified the values of the variable defined in \code{by}
-#' will be thresholded accordingly.
+#' will be threshold accordingly.
 #'
 #' @param n Integer. Number of raws of the output chart
 #'
 #' @param descending Logical. If \code{TRUE} The output chart is organized in a descending order
 #'
-#' @param cover An optional threshold for coverage, whcih muct be a real number between 0 and 1.
+#' @param cover An optional threshold for coverage, which must be a real number between 0 and 1.
 #' If specified, feature-sets with a coverage lower than or equal to this value are removed.
 #'
 #'

@@ -1,7 +1,7 @@
 #' @title topSEA
 #'
 #' @description returns a plotof SEA-chart which illustrates
-#' roportion of discoveries per pathway.
+#' proportion of discoveries per pathway.
 #'
 #' @param object A SEA-chart object which is the output of \code{SEA} function
 #'
@@ -11,7 +11,7 @@
 #' @param thresh A real number between 0 and 1. Which will be used as
 #' a visual aid to distinguish significant pathways
 #'
-#' @param n Integer. Number of raws from SEA-chart object to be plotted.
+#' @param n Integer. Number of rows from SEA-chart object to be plotted.
 #'
 #'
 #' @return Returns a plot of SEA_chart according to the selected arguments
