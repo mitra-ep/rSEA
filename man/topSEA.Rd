@@ -13,13 +13,13 @@ topSEA(object, by, thresh = NULL, descending = TRUE, n = 20, cover)
 The default is TDP_bound.}
 
 \item{thresh}{A real number between 0 and 1. If specified the values of the variable defined in \code{by}
-will be thresholded accordingly.}
+will be threshold accordingly.}
 
 \item{descending}{Logical. If \code{TRUE} The output chart is organized in a descending order}
 
 \item{n}{Integer. Number of raws of the output chart}
 
-\item{cover}{An optional threshold for coverage, whcih muct be a real number between 0 and 1.
+\item{cover}{An optional threshold for coverage, which must be a real number between 0 and 1.
 If specified, feature-sets with a coverage lower than or equal to this value are removed.}
 }
 \value{
@@ -31,7 +31,7 @@ the feature-sets according to the selected argument into ascending or
 descending order.
 }
 \examples{
-#See the examples for \\code{\\link{SEA}}
+#See the examples for \code{\link{SEA}}
 
 }
 \references{

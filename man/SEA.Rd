@@ -4,9 +4,18 @@
 \alias{SEA}
 \title{SEA}
 \usage{
-SEA(pvalue, featureIDs, data, pathlist, select, tdphat = TRUE,
-  selfcontained = TRUE, competitive = TRUE, thresh = NULL,
-  alpha = 0.05)
+SEA(
+  pvalue,
+  featureIDs,
+  data,
+  pathlist,
+  select,
+  tdphat = TRUE,
+  selfcontained = TRUE,
+  competitive = TRUE,
+  thresh = NULL,
+  alpha = 0.05
+)
 }
 \arguments{
 \item{pvalue}{Vector of p-values. It can be the name of the covariate representing the Vector of

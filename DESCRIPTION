@@ -12,5 +12,4 @@ Date: 2019-10-02
 Encoding: UTF-8
 VignetteBuilder: knitr
 LazyData: true
-RoxygenNote: 6.1.1
-
+RoxygenNote: 7.3.1
