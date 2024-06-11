@@ -8,7 +8,7 @@
 #' @param by the Variable which will we mapped.
 #' It should be either the TDP estimate or TDP bound.The default is TDP bound.
 #'
-#' @param thresh A real number between 0 and 1. Which will be used as
+#' @param threshold A real number between 0 and 1. Which will be used as
 #' a visual aid to distinguish significant pathways
 #'
 #' @param n Integer. Number of rows from SEA-chart object to be plotted.

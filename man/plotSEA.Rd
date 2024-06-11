@@ -12,10 +12,10 @@ plotSEA(object, by = "TDP.estimate", threshold = 0.005, n = 20)
 \item{by}{the Variable which will we mapped.
 It should be either the TDP estimate or TDP bound.The default is TDP bound.}
 
-\item{n}{Integer. Number of rows from SEA-chart object to be plotted.}
-
-\item{thresh}{A real number between 0 and 1. Which will be used as
+\item{threshold}{A real number between 0 and 1. Which will be used as
 a visual aid to distinguish significant pathways}
+
+\item{n}{Integer. Number of rows from SEA-chart object to be plotted.}
 }
 \value{
 Returns a plot of SEA_chart according to the selected arguments

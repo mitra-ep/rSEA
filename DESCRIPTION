@@ -11,5 +11,4 @@ License: GPL (>= 2)
 Date: 2019-10-02
 Encoding: UTF-8
 VignetteBuilder: knitr
-LazyData: true
 RoxygenNote: 7.3.1
